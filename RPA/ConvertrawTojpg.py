@@ -29,6 +29,10 @@ class RawToJpgConverter(QWidget):
         self.statusLabel = QLabel(self)
         self.statusLabel.setText('')
 
+        self.copyrightlabel = QLabel(self)
+        self.copyrightlabel.setText("(C) 2024. Jiyun Moon all rights reserved")
+
+
         layout = QVBoxLayout()
         layout.addWidget(self.selectFolderBtn)
         layout.addWidget(self.widthLabel)
@@ -37,6 +41,7 @@ class RawToJpgConverter(QWidget):
         layout.addWidget(self.heightInput)
         layout.addWidget(self.convertBtn)
         layout.addWidget(self.statusLabel)
+        layout.addWidget(self.copyrightlabel)
 
         self.setLayout(layout)
 
@@ -68,28 +73,29 @@ class RawToJpgConverter(QWidget):
         output_folder = os.path.join(self.folder_path, 'Converted_JPG')
         os.makedirs(output_folder, exist_ok=True)
 
-
         progress_dialog = QProgressDialog("Converting...", "Cancel", 0, len(raw_files), self)
         progress_dialog.setWindowTitle("Conversion Progress")
         progress_dialog.setWindowModality(Qt.WindowModal)
 
         for j, raw_file in enumerate(raw_files):
-            print(j,"11")
+            # print(j,"11")
             if progress_dialog.wasCanceled():
-                print(j,"22")
+                # print(j,"22")
                 response = QMessageBox.question(self, 'Cancel', 'Are you sure you want to cancel?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if response == QMessageBox.Yes:
                     QMessageBox.information(self, 'Conversion Canceled', 'Conversion to JPG was canceled.',
                                             QMessageBox.Ok)
                     break
                 else:
-                    print(j,"33")
+                    # print(j,"33")
                     progress_dialog = QProgressDialog()
-                    progress_dialog = QProgressDialog("Converting...", "Cancel", 50, len(raw_files), self)
+                    progress_dialog = QProgressDialog("Converting...", "Cancel", 0, len(raw_files), self)
+                    progress_dialog.setValue(j)
+                    # print("progress bar resumed")
                     continue
 
 
-            print("continue")
+            # print("continue")
 
             raw_file_path = os.path.join(self.folder_path, raw_file)
             jpg_file_path = os.path.join(output_folder, os.path.splitext(raw_file)[0] + '.jpg')
@@ -110,10 +116,11 @@ class RawToJpgConverter(QWidget):
             QApplication.processEvents()
 
 
-            if j == len(raw_files):
-                QMessageBox.information(self, 'Conversion Complete', 'Conversion to JPG completed successfully.', QMessageBox.Ok)
+            # if j == len(raw_files):
+        QMessageBox.information(self, 'Conversion Complete', 'Conversion to JPG completed successfully.', QMessageBox.Ok)
 
         progress_dialog.deleteLater()
+
         self.statusLabel.setText('Conversion completed.')
 
 def main():
