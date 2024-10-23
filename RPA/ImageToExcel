@@ -1,0 +1,145 @@
+import os
+import numpy as np
+from PIL import Image as PILImage
+from PIL import ImageOps
+from openpyxl import Workbook
+from openpyxl.drawing.image import Image
+from openpyxl.styles import Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from io import BytesIO
+from datetime import datetime
+import time
+
+root_dir = r'H:\data\FL5_241002' #경로 선택 필요 
+samples = [os.path.join(root_dir,x) for x in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir,x))]
+
+# Tele image size
+# 이미지 사이즈 입력창 필요
+width = 3976
+height = 2736
+
+samples = [os.path.join(root_dir,x) for x in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir,x))]
+#print(samples)
+samples = samples = sorted(samples, key=lambda x: os.path.split(x)[0], reverse= False)
+#print(samples)
+
+BORDER_NONE = None
+BORDER_DASHDOT = 'dashDot'
+BORDER_DASHDOTDOT = 'dashDotDot'
+BORDER_DASHED = 'dashed'
+BORDER_DOTTED = 'dotted'
+BORDER_DOUBLE = 'double'
+BORDER_HAIR = 'hair'
+BORDER_MEDIUM = 'medium'
+BORDER_MEDIUMDASHDOT = 'mediumDashDot'
+BORDER_MEDIUMDASHDOTDOT = 'mediumDashDotDot'
+BORDER_MEDIUMDASHED = 'mediumDashed'
+BORDER_SLANTDASHDOT = 'slantDashDot'
+BORDER_THICK = 'thick'
+BORDER_THIN = 'thin'
+
+start_time = time.time()
+workbook = Workbook()
+for sample in samples:
+    print("SAMPLE::",sample)
+    directions = [os.path.join(sample, direction) for direction in os.listdir(sample)]
+    print(directions)
+    new_sheet = workbook.create_sheet(title = os.path.split(sample)[1])
+    workbook.active = new_sheet
+    sheet = workbook.active
+    
+    row = 3
+    column = 3
+    
+    for direction in directions:
+        direction_cell = sheet.cell(row, column-1)
+        direction_cell.value = os.path.split(direction)[1]
+        direction_cell.alignment = Alignment(horizontal='center', vertical='center')
+        direction_cell.border = Border(left=Side(border_style=BORDER_THICK,
+                             color='000000'),
+                   right=Side(border_style=BORDER_THICK,
+                              color='000000'),
+                   top=Side(border_style=BORDER_THICK,
+                            color='000000'),
+                   bottom=Side(border_style=BORDER_THICK,
+                               color='000000'))
+        raw_images = [os.path.join(direction, f) for f in os.listdir(direction) if f.lower().endswith('.raw')]
+        
+        if len(raw_images) ==0:
+            raw_images = [os.path.join(direction,f) for f in os.listdir(direction) if f.lower().endswith('.jpg')]
+        for raw in raw_images:
+            print(raw)
+            if ".DS_" not in raw and raw[-4:] != ".jpg":
+
+                new_dir = direction+"_jpg"
+                os.makedirs(new_dir, exist_ok = True)
+                with open(raw, "rb") as f:
+                    raw_data = np.fromfile(f, dtype=np.uint16)
+                    raw_data = raw_data >> 2
+                    raw_data = raw_data.astype(np.uint8)
+
+                    img = PILImage.frombytes("L", (width, height), raw_data)
+                    img = img.transpose(PILImage.FLIP_TOP_BOTTOM)
+                    base_name = os.path.basename(raw)
+                    new_fileName = os.path.join(new_dir, os.path.splitext(base_name)[0]+'.jpg')
+                    
+                    img.save(new_fileName, format='JPEG')
+
+            elif ".DS_" not in raw and raw[-4:] == ".jpg":
+                new_dir = direction            
+        
+
+        images = [img for img in os.listdir(new_dir) if not new_dir.startswith(".DS")]
+        print("1::",images)
+        images = sorted(images, key=lambda x: int(x.split('.')[0]), reverse= False)
+        print("2::",images)
+
+        for image in images:
+            image_path = os.path.join(new_dir, image)
+            img = PILImage.open(image_path)
+            img_width, img_height = int(img.width)*0.1, int(img.height)*0.1
+            img.thumbnail((img_width, img_height))
+            
+            img_bytes = BytesIO()
+            img.save(img_bytes, format='JPEG')
+            
+            sheet.column_dimensions[get_column_letter(column)].width = img_width* 0.14
+            sheet.row_dimensions[row].height = img_height * 0.75
+
+            cell = sheet.cell(row=row, column=column)
+            cell.border = Border(left=Side(border_style=BORDER_THICK,
+                             color='000000'),
+                   right=Side(border_style=BORDER_THICK,
+                              color='000000'),
+                   top=Side(border_style=BORDER_THICK,
+                            color='000000'),
+                   bottom=Side(border_style=BORDER_THICK,
+                               color='000000'))
+            img = Image(img_bytes)
+            print(img)
+            sheet.add_image(img, f'{get_column_letter(column)}{row}')
+            # 이미지 파일명 삽입
+            file_name_cell = sheet.cell(row=row-1, column=column)
+            file_name_cell.value = image[:-4]
+            file_name_cell.alignment = Alignment(horizontal='center', vertical='center')
+            file_name_cell.border = Border(left=Side(border_style=BORDER_THICK,
+                             color='000000'),
+                   right=Side(border_style=BORDER_THICK,
+                              color='000000'),
+                   top=Side(border_style=BORDER_THICK,
+                            color='000000'),
+                   bottom=Side(border_style=BORDER_THICK,
+                               color='000000'))
+
+            column += 1
+        row += 2
+        column = 3
+create_time = datetime.today().strftime('%Y%m%d')
+output = os.path.join(root_dir,create_time+'.xlsx')
+# workbook.save("./output_"+create_time+'.xlsx')
+workbook.save(output)
+end_time = time.time()
+
+print(f"{end_time - start_time:.5f} sec")
+
+
